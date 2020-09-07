@@ -11,7 +11,7 @@ shot=(import -window root)
 desktop=""
 shot_custom=false
 i3lock_cmd="${i3lock_cmd:-i3lock}"
-data_dir=${data_dir:-/usr/share/i3lock-fancy}
+data_dir="${data_dir:-/usr/share/i3lock-fancy}"
 
 options="Options:
     -h, --help       This help menu.
@@ -95,39 +95,12 @@ parse_args() {
 process() {
     local geo="$1"
     local part="$dir/$geo.png"
-    local value="60" #brightness value to compare to
-    local color
-    color=$(convert "$image" -crop "$geo" +repage -gravity center -crop 100x100+0+0 +repage -colorspace hsb \
-        -resize 1x1 txt:- | awk -F '[%$]' 'NR==2{gsub(",",""); printf "%.0f\n", $(NF-1)}');
-
-    if (( value < color )); then #white background image and black text
-        local bw="black"
-        local icon="$data_dir/icons/lockdark.png"
-        local color_args=("--insidecolor=0000001c" "--ringcolor=0000003e" \
-            "--linecolor=00000000" "--keyhlcolor=ffffff80" "--ringvercolor=ffffff00" \
-            "--separatorcolor=22222260" "--insidevercolor=ffffff1c" \
-            "--ringwrongcolor=ffffff55" "--insidewrongcolor=ffffff1c" \
-            "--verifcolor=ffffff00" "--wrongcolor=ff000000" "--timecolor=ffffff00" \
-            "--datecolor=ffffff00" "--layoutcolor=ffffff00")
-    else #black
-        local bw="white"
-        local icon="$data_dir/icons/lock.png"
-        local color_args=("--insidecolor=ffffff1c" "--ringcolor=ffffff3e" \
-            "--linecolor=ffffff00" "--keyhlcolor=00000080" "--ringvercolor=00000000" \
-            "--separatorcolor=22222260" "--insidevercolor=0000001c" \
-            "--ringwrongcolor=00000055" "--insidewrongcolor=0000001c" \
-            "--verifcolor=00000000" "--wrongcolor=ff000000" "--timecolor=00000000" \
-            "--datecolor=00000000" "--layoutcolor=00000000")
-    fi
-
+    local bw="white"
+    local icon="$data_dir/icons/lock.png"
     convert \
         "$image" -crop "$geo" +repage \
         -gravity center "${hue[@]}" "${effect[@]}" -resize $geo -font "$font" -pointsize 26 -fill "$bw" \
         -annotate +0+160 "$text" "$icon" -gravity center -composite "$part"
-
-    if [[ $geo =~ "+0+0" ]]; then
-        for x in ${color_args[@]}; do echo $x >> "$dir/color_args"; done
-    fi
 }
 
 main() {
@@ -150,7 +123,6 @@ main() {
     done
 
     wait < "$dir/pids"
-    mapfile -t color_args < "$dir/color_args"
 
     convert "$image" \
             $(for geo in $geos; do echo "$dir/$geo.png" -geometry "$geo" -composite; done) \
@@ -160,6 +132,13 @@ main() {
     # the desktop) before locking.
     ${desktop} ${desktop:+-k on}
 
+
+    local color_args=("--insidecolor=ffffff1c" "--ringcolor=ffffff3e" \
+        "--linecolor=ffffff00" "--keyhlcolor=00000080" "--ringvercolor=00000000" \
+        "--separatorcolor=22222260" "--insidevercolor=0000001c" \
+        "--ringwrongcolor=00000055" "--insidewrongcolor=0000001c" \
+        "--verifcolor=00000000" "--wrongcolor=ff000000" "--timecolor=00000000" \
+        "--datecolor=00000000" "--layoutcolor=00000000")
     # try to use i3lock with prepared parameters
     if ! "${i3lock_cmd[@]}" "${i3lock_args[@]}" "${color_args[@]}" >/dev/null 2>&1; then
         # We have failed, lets get back to stock one
